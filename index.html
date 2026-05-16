@@ -3,90 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VM Hub - Prawdziwy Emulator</title>
+    <title>VM Hub • Mój Emulator</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <style>
         body { font-family: 'Inter', system-ui, sans-serif; }
-        iframe { border: none; border-radius: 16px; background: #000; }
+        .vm-card { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .vm-card:hover { transform: translateY(-12px); box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.4); }
+        .status-dot { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
     </style>
 </head>
-<body class="bg-zinc-950 text-white">
+<body class="bg-zinc-950 text-zinc-100">
 
-<div class="max-w-7xl mx-auto p-8">
-    <div class="flex items-center justify-between mb-10">
-        <h1 class="text-5xl font-bold">VM Hub <span class="text-blue-500">- Prawdziwy Emulator</span></h1>
-        <p class="text-zinc-400">Prezentacja • Maj 2026</p>
-    </div>
-
-    <div class="grid grid-cols-12 gap-8">
-        <!-- Menu -->
-        <div class="col-span-12 md:col-span-4 space-y-4">
-            <h2 class="text-2xl font-semibold mb-6">Wybierz maszynę wirtualną</h2>
-            
-            <div onclick="loadVM(0)" class="group bg-zinc-900 hover:bg-zinc-800 p-6 rounded-3xl cursor-pointer transition-all border border-transparent hover:border-blue-500">
-                <h3 class="text-xl font-bold">Ubuntu 22.04 Desktop</h3>
-                <p class="text-emerald-400">Pełny graficzny Linux (v86)</p>
-            </div>
-
-            <div onclick="loadVM(1)" class="group bg-zinc-900 hover:bg-zinc-800 p-6 rounded-3xl cursor-pointer transition-all">
-                <h3 class="text-xl font-bold">Windows 98</h3>
-                <p class="text-amber-400">Klasyczny system (v86)</p>
-            </div>
-
-            <div onclick="loadVM(2)" class="group bg-zinc-900 hover:bg-zinc-800 p-6 rounded-3xl cursor-pointer transition-all">
-                <h3 class="text-xl font-bold">Alpine Linux x86_64</h3>
-                <p class="text-zinc-400">Nowoczesny Linux (JSLinux)</p>
-            </div>
+<div class="flex h-screen">
+    <!-- Sidebar -->
+    <div class="w-80 bg-zinc-900 border-r border-zinc-800 p-6 flex flex-col">
+        <div class="flex items-center gap-3 mb-10">
+            <div class="w-12 h-12 bg-gradient-to-br from-violet-500 to-fuchsia-500 rounded-3xl flex items-center justify-center text-3xl font-bold">VM</div>
+            <h1 class="text-3xl font-bold tracking-tight">VM Hub</h1>
         </div>
 
-        <!-- Emulator -->
-        <div class="col-span-12 md:col-span-8">
-            <div id="header" class="hidden mb-4 flex justify-between items-center">
-                <h2 id="title" class="text-3xl font-bold"></h2>
-                <button onclick="stopVM()" class="bg-red-600 px-8 py-3 rounded-2xl font-medium hover:bg-red-700">
-                    <i class="fa-solid fa-power-off"></i> Wyłącz
-                </button>
+        <button onclick="showAddModal()" 
+                class="w-full bg-white text-black py-5 rounded-3xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-all">
+            <i class="fa-solid fa-plus"></i>
+            DODAJ NOWĄ MASZYNĘ
+        </button>
+
+        <div class="mt-10 flex-1">
+            <h3 class="text-zinc-400 text-sm mb-4 px-3">TWOJE MASZYNY</h3>
+            <div id="sidebar-vms" class="space-y-1"></div>
+        </div>
+
+        <div class="text-xs text-zinc-500 mt-auto pt-6 border-t border-zinc-800">
+            Zalogowany jako: <span class="text-white">Wojtek</span>
+        </div>
+    </div>
+
+    <!-- Główna treść -->
+    <div class="flex-1 p-8 overflow-auto">
+        <div class="flex justify-between items-center mb-8">
+            <h2 class="text-4xl font-bold">Twoje Maszyny Wirtualne</h2>
+            <div class="bg-zinc-800 px-5 py-2 rounded-3xl text-sm flex items-center gap-2">
+                <div class="w-3 h-3 bg-emerald-500 rounded-full status-dot"></div>
+                <span id="online-count">2 online</span>
             </div>
-            
-            <iframe id="vm" width="100%" height="620" class="hidden"></iframe>
-            
-            <div id="start" class="bg-zinc-900 rounded-3xl p-24 text-center">
-                <h2 class="text-4xl font-bold mb-6">Kliknij maszynę po lewej</h2>
-                <p class="text-zinc-400 text-lg">Uruchomi się **prawdziwy emulator** w przeglądarce</p>
-            </div>
+        </div>
+        
+        <div id="vms-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+    </div>
+</div>
+
+<!-- Modal dodawania -->
+<div id="addModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div class="bg-zinc-900 w-full max-w-lg rounded-3xl p-8">
+        <h3 class="text-2xl font-bold mb-6">Dodaj nową maszynę</h3>
+        
+        <input id="vmName" type="text" placeholder="Nazwa maszyny (np. Shadow PC)" 
+               class="w-full bg-zinc-800 p-4 rounded-2xl mb-4 outline-none focus:border-violet-500 border border-transparent">
+        
+        <select id="vmType" class="w-full bg-zinc-800 p-4 rounded-2xl mb-6 outline-none">
+            <option value="Shadow PC">Shadow PC (Cloud)</option>
+            <option value="VirtualBox">VirtualBox</option>
+            <option value="Hyper-V">Hyper-V</option>
+            <option value="VMware">VMware</option>
+            <option value="Custom">Inny (VPS / Emulator)</option>
+        </select>
+
+        <div class="flex gap-4">
+            <button onclick="hideModal()" class="flex-1 py-4 border border-zinc-700 rounded-3xl hover:bg-zinc-800">Anuluj</button>
+            <button onclick="addNewVM()" class="flex-1 py-4 bg-violet-600 hover:bg-violet-500 rounded-3xl font-bold">Dodaj maszynę</button>
         </div>
     </div>
 </div>
 
 <script>
-function loadVM(n) {
-    document.getElementById('start').classList.add('hidden');
-    document.getElementById('vm').classList.remove('hidden');
-    document.getElementById('header').classList.remove('hidden');
+// Dane
+let vms = [
+    { id: 1, name: "Mój Shadow PC", type: "Shadow PC", status: "online", ip: "185.12.45.67" },
+    { id: 2, name: "Serwer Testowy", type: "VirtualBox", status: "offline", ip: "192.168.1.50" }
+];
 
-    const frame = document.getElementById('vm');
-    const title = document.getElementById('title');
+// Renderowanie
+function renderVMs() {
+    const grid = document.getElementById('vms-grid');
+    const sidebar = document.getElementById('sidebar-vms');
+    
+    let gridHTML = '';
+    let sidebarHTML = '';
 
-    if (n === 0) {
-        title.textContent = "Ubuntu 22.04 Desktop";
-        frame.src = "https://copy.sh/v86/?profile=ubuntu";
-    } else if (n === 1) {
-        title.textContent = "Windows 98";
-        frame.src = "https://copy.sh/v86/?profile=win98";
-    } else if (n === 2) {
-        title.textContent = "Alpine Linux x86_64";
-        frame.src = "https://bellard.org/jslinux/vm.html?url=alpine-x86_64.cfg";
+    vms.forEach(vm => {
+        gridHTML += `
+            <div class="vm-card bg-zinc-900 border border-zinc-700 rounded-3xl p-6">
+                <div class="flex justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold">${vm.name}</h3>
+                        <p class="text-violet-400">${vm.type}</p>
+                    </div>
+                    <span class="px-4 py-1.5 rounded-3xl text-sm font-medium ${vm.status === 'online' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700 text-zinc-400'}">
+                        ${vm.status.toUpperCase()}
+                    </span>
+                </div>
+                
+                <div class="mt-6 flex gap-3">
+                    <button onclick="connectToVM(${vm.id})" 
+                            class="flex-1 bg-white text-black py-4 rounded-2xl font-bold hover:bg-white/90 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plug"></i> Połącz
+                    </button>
+                    <button onclick="toggleStatus(${vm.id})" 
+                            class="px-6 py-4 border border-zinc-700 rounded-2xl hover:bg-zinc-800">
+                        <i class="fa-solid fa-power-off"></i>
+                    </button>
+                </div>
+            </div>`;
+
+        sidebarHTML += `
+            <div onclick="connectToVM(${vm.id})" 
+                 class="px-4 py-3 hover:bg-zinc-800 rounded-2xl cursor-pointer flex justify-between items-center">
+                <span>${vm.name}</span>
+                <span class="text-xs ${vm.status === 'online' ? 'text-emerald-400' : 'text-zinc-500'}">●</span>
+            </div>`;
+    });
+
+    grid.innerHTML = gridHTML;
+    sidebar.innerHTML = sidebarHTML;
+    document.getElementById('online-count').textContent = `${vms.filter(v => v.status === 'online').length} online`;
+}
+
+// Połączenie z maszyną
+function connectToVM(id) {
+    const vm = vms.find(v => v.id === id);
+    if (!vm) return;
+
+    if (vm.status === 'offline') {
+        alert(`Maszyna "${vm.name}" jest offline. Najpierw włącz ją.`);
+        return;
+    }
+
+    alert(`Łączenie z ${vm.name} (${vm.type})...\n\nSymulacja połączenia (Shadow PC style)\nAdres: ${vm.ip || 'cloud.vmhub.local'}`);
+    
+    // Tutaj możesz później dodać prawdziwy iframe lub link
+    setTimeout(() => {
+        if (confirm("Otworzyć w nowym oknie? (symulacja)")) {
+            window.open('https://copy.sh/v86/?profile=ubuntu', '_blank');
+        }
+    }, 800);
+}
+
+// Przełączanie stanu
+function toggleStatus(id) {
+    const vm = vms.find(v => v.id === id);
+    if (vm) {
+        vm.status = vm.status === 'online' ? 'offline' : 'online';
+        renderVMs();
     }
 }
 
-function stopVM() {
-    const frame = document.getElementById('vm');
-    frame.src = "";
-    frame.classList.add('hidden');
-    document.getElementById('header').classList.add('hidden');
-    document.getElementById('start').classList.remove('hidden');
+// Modal
+function showAddModal() {
+    document.getElementById('addModal').classList.remove('hidden');
+    document.getElementById('addModal').classList.add('flex');
 }
+
+function hideModal() {
+    document.getElementById('addModal').classList.add('hidden');
+    document.getElementById('addModal').classList.remove('flex');
+}
+
+function addNewVM() {
+    const name = document.getElementById('vmName').value.trim() || "Nowa Maszyna";
+    const type = document.getElementById('vmType').value;
+    
+    vms.push({
+        id: Date.now(),
+        name: name,
+        type: type,
+        status: "online",
+        ip: "185.22." + Math.floor(Math.random()*99) + "." + Math.floor(Math.random()*99)
+    });
+    
+    hideModal();
+    renderVMs();
+    
+    // Czyszczenie inputa
+    document.getElementById('vmName').value = '';
+}
+
+// Start
+window.onload = () => {
+    renderVMs();
+};
 </script>
 
 </body>
